@@ -1,0 +1,669 @@
+<title>Pizarra NFL</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: encabezado fijo con pestañas; tarjetas de partido apiladas (1 col móvil, 2 col escritorio) estilo marcador de estadio */
+:root{
+  --bg:#eef1f4; --surface:#ffffff; --surface-2:#f5f7f9; --line:#d7dde4; --fg:#16202b; --muted:#5b6876;
+  --accent:#e8b400; --accent-ink:#1c1600; --accent-soft:#fff3c4;
+  --good:#1f7a4d; --good-soft:#dff2e8; --warn:#9a6200; --warn-soft:#fbeccc; --bad:#b3261e; --bad-soft:#f9dedb;
+  --bar-away:#8a97a6; --bar-home:#16202b;
+  --f-display:"Big Shoulders Display","Arial Narrow",Impact,sans-serif;
+  --f-body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f151c; --surface:#17202a; --surface-2:#1d2833; --line:#2b3846; --fg:#e8edf2; --muted:#93a1b0;
+  --accent:#f5c518; --accent-ink:#1c1600; --accent-soft:#3a3010;
+  --good:#5cc995; --good-soft:#163527; --warn:#e8ac45; --warn-soft:#3a2a10; --bad:#f08a80; --bad-soft:#3d1a18;
+  --bar-away:#4f5d6c; --bar-home:#e8edf2; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f151c; --surface:#17202a; --surface-2:#1d2833; --line:#2b3846; --fg:#e8edf2; --muted:#93a1b0;
+  --accent:#f5c518; --accent-ink:#1c1600; --accent-soft:#3a3010;
+  --good:#5cc995; --good-soft:#163527; --warn:#e8ac45; --warn-soft:#3a2a10; --bad:#f08a80; --bad-soft:#3d1a18;
+  --bar-away:#4f5d6c; --bar-home:#e8edf2; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;padding-block:12px 4px}
+.brand h1{font-family:var(--f-display);font-weight:800;font-size:30px;letter-spacing:.02em;margin:0;line-height:1;text-transform:uppercase}
+.brand h1 span{background:var(--accent);color:var(--accent-ink);padding:0 6px;margin-left:4px}
+.brand .meta{color:var(--muted);font-size:12.5px}
+nav.tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding-block:4px 0}
+nav.tabs a{font-family:var(--f-display);font-weight:600;font-size:17px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-decoration:none;padding:8px 12px 9px;border-bottom:3px solid transparent;white-space:nowrap}
+nav.tabs a[aria-current="page"]{color:var(--fg);border-bottom-color:var(--accent)}
+nav.tabs a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+main{padding-block:18px 48px}
+h2.sec{font-family:var(--f-display);font-weight:800;font-size:24px;text-transform:uppercase;letter-spacing:.03em;margin:0 0 4px;text-wrap:balance}
+p.lead{color:var(--muted);margin:0 0 16px;max-width:68ch}
+.alerts{display:grid;gap:8px;margin-bottom:18px}
+.alert{display:flex;gap:10px;align-items:flex-start;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent);padding:10px 12px;font-size:14px}
+.alert b{font-weight:700}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:20px}
+.kpi{background:var(--surface);border:1px solid var(--line);padding:10px 12px}
+.kpi .v{font-family:var(--f-display);font-weight:800;font-size:30px;line-height:1.05;font-variant-numeric:tabular-nums}
+.kpi .l{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.filters{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.chipbtn{font:inherit;font-size:13px;font-weight:600;border:1px solid var(--line);background:var(--surface);color:var(--fg);padding:6px 11px;border-radius:999px;cursor:pointer}
+.chipbtn[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.grid{display:grid;grid-template-columns:1fr;gap:14px}
+@media (min-width:860px){.grid{grid-template-columns:1fr 1fr}}
+.game{background:var(--surface);border:1px solid var(--line);min-width:0;display:flex;flex-direction:column}
+.g-head{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:9px 14px;border-bottom:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+.g-head .live{color:var(--bad);font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.score{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;padding:14px 14px 6px}
+.team{display:flex;flex-direction:column;gap:4px;min-width:0}
+.team.home{align-items:flex-end;text-align:right}
+.tchip{display:inline-flex;align-items:center;justify-content:center;font-family:var(--f-display);font-weight:800;font-size:22px;letter-spacing:.03em;min-width:58px;padding:2px 8px;line-height:1.2}
+.tname{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.qb{font-size:12.5px}
+.qb.changed{color:var(--bad);font-weight:600}
+.pts{font-family:var(--f-display);font-weight:800;font-size:52px;line-height:.95;font-variant-numeric:tabular-nums;text-align:center;display:flex;gap:10px;align-items:baseline}
+.pts small{font-size:20px;color:var(--muted);font-weight:600}
+.pts .win{color:var(--fg)} .pts .lose{color:var(--muted)}
+.ptslabel{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);text-align:center}
+.probbar{padding:6px 14px 4px}
+.bar{display:flex;height:10px;background:var(--surface-2)}
+.bar i{display:block;height:100%}
+.bar .a{background:var(--bar-away)} .bar .h{background:var(--bar-home)}
+.barlbl{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:13px;margin-top:4px;font-variant-numeric:tabular-nums}
+.barlbl b{font-weight:600}
+.lines{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border-block:1px solid var(--line);margin-top:10px}
+.lines>div{background:var(--surface);padding:9px 14px;min-width:0}
+.lines .k{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.lines .m{font-family:var(--f-mono);font-size:14px;font-variant-numeric:tabular-nums}
+.lines .m .mv{font-size:12px;color:var(--muted)}
+.tags{display:flex;flex-wrap:wrap;gap:6px;padding:10px 14px 0}
+.tag{font-size:12px;font-weight:600;padding:3px 8px;border-radius:3px;background:var(--surface-2);color:var(--fg);border:1px solid var(--line)}
+.tag.good{background:var(--good-soft);color:var(--good);border-color:transparent}
+.tag.warn{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.tag.bad{background:var(--bad-soft);color:var(--bad);border-color:transparent}
+.tag.flag{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+.inj{padding:8px 14px 0;font-size:13px;color:var(--muted)}
+.inj b{color:var(--fg);font-weight:600}
+details.more{margin-top:auto;border-top:1px solid var(--line)}
+details.more>summary{cursor:pointer;list-style:none;padding:10px 14px;font-weight:600;font-size:13.5px;display:flex;justify-content:space-between}
+details.more>summary::-webkit-details-marker{display:none}
+details.more>summary::after{content:"+";font-family:var(--f-mono);color:var(--muted)}
+details.more[open]>summary::after{content:"–"}
+.dbody{padding:0 14px 14px;display:grid;gap:12px}
+.mini{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px 14px;font-size:13px}
+.mini div{display:flex;justify-content:space-between;gap:8px;border-bottom:1px dotted var(--line);padding-block:3px}
+.mini span:last-child{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.tbl{overflow-x:auto;border:1px solid var(--line)}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:6px 8px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;background:var(--surface-2);position:sticky;top:0}
+td{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+th:first-child,td:first-child{text-align:left;font-family:var(--f-body)}
+td.pl{font-family:var(--f-body)}
+td.pl small{color:var(--muted)}
+tr.q td.pl::after{content:" Q";color:var(--warn);font-weight:700;font-size:11px}
+.panel{background:var(--surface);border:1px solid var(--line);padding:14px}
+.calc{display:grid;gap:12px;margin-bottom:18px}
+.calc form{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+label{display:grid;gap:4px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+input,select{font:inherit;font-size:15px;color:var(--fg);background:var(--surface-2);border:1px solid var(--line);padding:8px 10px;width:100%;min-width:0;text-transform:none;letter-spacing:0}
+.res{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
+.res .kpi{background:var(--surface-2)}
+.ev-pos{color:var(--good)} .ev-neg{color:var(--bad)}
+.injteam{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.injteam .panel h3{font-family:var(--f-display);font-weight:800;font-size:20px;margin:0 0 8px;display:flex;gap:8px;align-items:center}
+.injrow{display:grid;grid-template-columns:1fr auto;gap:2px 8px;padding-block:6px;border-top:1px solid var(--line);font-size:13.5px}
+.injrow .d{grid-column:1/-1;font-size:12px;color:var(--muted)}
+.st{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 6px;border-radius:3px}
+.st.Out,.st.IR,.st.Doubtful{background:var(--bad-soft);color:var(--bad)}
+.st.Questionable{background:var(--warn-soft);color:var(--warn)}
+.prose{max-width:70ch} .prose h3{font-family:var(--f-display);font-size:20px;text-transform:uppercase;letter-spacing:.03em;margin:22px 0 6px} .prose p,.prose li{color:var(--fg)} .prose li{margin-bottom:4px}
+.foot{font-size:12px;color:var(--muted);margin-top:28px;max-width:75ch}
+
+.lu td.sub{color:var(--bad)} .lu td small{display:block;color:var(--muted);font-size:11.5px;font-family:var(--f-body)}
+.lu td{white-space:normal;text-align:left;font-family:var(--f-body)} .lu th{text-align:left}
+.seg{display:flex;gap:0;border:1px solid var(--line);width:max-content;max-width:100%;overflow-x:auto;margin-bottom:14px;background:var(--surface)}
+.seg button{font:inherit;font-family:var(--f-display);font-weight:600;font-size:16px;letter-spacing:.05em;text-transform:uppercase;border:0;border-right:1px solid var(--line);background:transparent;color:var(--muted);padding:7px 14px;cursor:pointer;white-space:nowrap}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.weeks{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.weeks .chipbtn{min-width:44px;text-align:center}
+.rgrid{display:grid;grid-template-columns:1fr;gap:10px}
+@media (min-width:860px){.rgrid{grid-template-columns:1fr 1fr}}
+.rcard{background:var(--surface);border:1px solid var(--line);min-width:0}
+.rrow{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;padding:10px 14px 4px}
+.rrow .sc{font-family:var(--f-display);font-weight:800;font-size:34px;line-height:1;font-variant-numeric:tabular-nums}
+.rrow .sc.l{color:var(--muted)}
+.rrow .mid{font-size:12px;color:var(--muted);text-align:center;line-height:1.3}
+.rsub{display:flex;flex-wrap:wrap;gap:6px;padding:4px 14px 10px}
+.box{display:grid;gap:10px}
+.box h4{margin:4px 0 0;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.stand{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,500px),1fr));gap:12px}
+.stand h3,.leaders h3{font-family:var(--f-display);font-weight:800;font-size:19px;text-transform:uppercase;letter-spacing:.03em;margin:0 0 6px}
+.form5{display:inline-flex;gap:2px}
+.form5 i{width:8px;height:8px;display:inline-block;border-radius:1px}
+.form5 .G{background:var(--good)} .form5 .P{background:var(--bad)} .form5 .E{background:var(--muted)}
+.leaders{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,380px),1fr));gap:12px}
+.sched-day{margin-bottom:14px}
+.sched-day h4{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 6px}
+.srow{display:grid;grid-template-columns:64px 1fr auto;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--line);border-top:0;padding:8px 12px;font-size:14px}
+.sched-day .srow:first-of-type{border-top:1px solid var(--line)}
+.srow .t{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+.srow .mu{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0}
+.srow .mu .tchip{font-size:16px;min-width:44px}
+.srow .ln{font-family:var(--f-mono);font-size:12.5px;color:var(--muted);text-align:right}
+.srow small{color:var(--muted)}
+.bye{font-size:13px;color:var(--muted);margin-bottom:14px}
+.glos-tools{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:16px}
+.glos{display:grid;gap:18px}
+.glos section{background:var(--surface);border:1px solid var(--line);padding:14px 16px}
+.glos h3{font-family:var(--f-display);font-weight:800;font-size:21px;text-transform:uppercase;letter-spacing:.03em;margin:0 0 4px}
+.glos .intro{color:var(--muted);margin:0 0 8px;max-width:70ch}
+.glos dl{margin:0;display:grid;gap:0}
+.glos .term{display:grid;grid-template-columns:minmax(150px,220px) 1fr;gap:4px 18px;padding:10px 0;border-top:1px solid var(--line)}
+.glos dt{font-weight:700}
+.glos dt small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+.glos dd{margin:0;max-width:72ch}
+.glos .ex{display:block;margin-top:6px;background:var(--surface-2);border-left:3px solid var(--accent);padding:6px 10px;font-size:13.5px}
+@media (max-width:560px){.glos .term{grid-template-columns:1fr}}
+.conv{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:8px}
+@media (max-width:520px){nav.tabs{gap:0}nav.tabs a{font-size:14.5px;padding:8px 7px 9px;letter-spacing:.03em}}
+@media (max-width:420px){.pts{font-size:42px}.tchip{font-size:19px;min-width:50px}}
+@media (prefers-reduced-motion:no-preference){.bar i{transition:width .5s ease}}
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand"><h1>Pizarra NFL <span id="wk">S9</span></h1><div class="meta" id="gen"></div></div>
+    <nav class="tabs" aria-label="Secciones">
+      <a href="#partidos">Partidos</a><a href="#props">Props</a><a href="#temporada">Temporada</a><a href="#lesiones">Lesiones</a><a href="#modelo">Modelo</a><a href="#guia">Guía</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <section id="v-partidos">
+    <div class="alerts" id="alerts"></div>
+    <div class="kpis" id="kpis"></div>
+    <div class="filters" id="gfilters" role="group" aria-label="Filtrar partidos">
+      <button class="chipbtn" data-f="all" aria-pressed="true">Todos</button>
+      <button class="chipbtn" data-f="ats" aria-pressed="false">Valor vs. spread</button>
+      <button class="chipbtn" data-f="conf" aria-pressed="false">Favorito ≥ 70%</button>
+      <button class="chipbtn" data-f="move" aria-pressed="false">Línea movida ≥ 2</button>
+      <button class="chipbtn" data-f="wx" aria-pressed="false">Clima relevante</button>
+    </div>
+    <div class="grid" id="games"></div>
+  </section>
+
+  <section id="v-props" hidden>
+    <h2 class="sec">Calculadora de props</h2>
+    <p class="lead">Elige jugador, estadística y la línea de tu casa de apuestas. Si escribes el momio, calcula el valor esperado por cada $100 apostados.</p>
+    <div class="panel calc">
+      <form id="calc" autocomplete="off">
+        <label for="c-player">Jugador<select id="c-player"></select></label>
+        <label for="c-stat">Estadística<select id="c-stat"></select></label>
+        <label for="c-line">Línea<input id="c-line" type="number" step="0.5" inputmode="decimal" value="0"></label>
+        <label for="c-odds">Momio Over (americano)<input id="c-odds" type="number" step="1" inputmode="numeric" placeholder="-110"></label>
+        <label for="c-odds-u">Momio Under (americano)<input id="c-odds-u" type="number" step="1" inputmode="numeric" placeholder="-110"></label>
+      </form>
+      <div class="res" id="calcres"></div>
+    </div>
+    <h2 class="sec">Proyecciones por jugador</h2>
+    <div class="filters" id="pfilters" role="group" aria-label="Filtrar posición">
+      <button class="chipbtn" data-p="all" aria-pressed="true">Todos</button>
+      <button class="chipbtn" data-p="QB" aria-pressed="false">QB</button>
+      <button class="chipbtn" data-p="RB" aria-pressed="false">RB</button>
+      <button class="chipbtn" data-p="WR" aria-pressed="false">WR</button>
+      <button class="chipbtn" data-p="TE" aria-pressed="false">TE</button>
+      <input id="psearch" type="search" placeholder="Buscar jugador o equipo" aria-label="Buscar jugador o equipo" style="max-width:240px">
+    </div>
+    <div class="tbl"><table id="ptable"></table></div>
+    <p class="foot" id="removed"></p>
+  </section>
+
+  <section id="v-lesiones" hidden>
+    <h2 class="sec">Reporte de lesiones</h2>
+    <p class="lead">Combina ESPN (incluye la lista de lesionados IR y los inactivos oficiales que se publican 90 minutos antes de cada partido) con el reporte oficial de la NFL. ESPN tiene prioridad porque se actualiza el mismo día del juego. En cada partido, el modelo descuenta a cada titular ausente según su porcentaje de snaps recientes.</p>
+    <div class="injteam" id="injlist"></div>
+  </section>
+
+  <section id="v-modelo" hidden>
+    <div class="prose">
+      <h2 class="sec">Cómo funciona</h2>
+      <p class="lead">Validación walk-forward: para cada temporada desde 2016, el modelo se entrenó solo con temporadas anteriores, como si predijera en tiempo real.</p>
+    </div>
+    <div class="tbl" style="max-width:720px"><table id="bt"></table></div>
+    <div class="prose">
+      <h3>Contra el spread</h3>
+      <p>Cuando el modelo difiere de la línea, ¿cuánto acierta? Se necesita 52.4% para ganar con momio -110.</p>
+    </div>
+    <div class="tbl" style="max-width:520px"><table id="ats"></table></div>
+    <div class="prose" id="method"></div>
+  </section>
+
+  <section id="v-temporada" hidden>
+    <h2 class="sec">Temporada <span id="t-season"></span></h2>
+    <p class="lead" id="t-lead"></p>
+    <div class="seg" id="tseg" role="group" aria-label="Vista de temporada">
+      <button data-v="res" aria-pressed="true">Resultados</button><button data-v="pos" aria-pressed="false">Posiciones</button><button data-v="lid" aria-pressed="false">Líderes</button><button data-v="cal" aria-pressed="false">Calendario</button>
+    </div>
+    <div id="t-res">
+      <div class="weeks" id="rweeks" role="group" aria-label="Semana"></div>
+      <div class="rgrid" id="results"></div>
+    </div>
+    <div id="t-pos" hidden><div class="stand" id="standings"></div>
+      <p class="foot">G = ganados, P = perdidos, E = empates, PF = puntos a favor, PC = puntos en contra. Racha: G3 significa tres victorias seguidas. Div. = récord contra rivales de su división. Los cuadros de color son los últimos 5 partidos (verde ganó, rojo perdió).</p></div>
+    <div id="t-lid" hidden><div class="leaders" id="leaders"></div></div>
+    <div id="t-cal" hidden>
+      <div class="weeks" id="cweeks" role="group" aria-label="Semana del calendario"></div>
+      <div id="sched"></div>
+      <p class="foot">Horarios en tiempo del Este de EE. UU. (ET), como los publica la NFL. Las líneas de las semanas lejanas son preliminares y cambian mucho.</p>
+    </div>
+  </section>
+
+  <section id="v-guia" hidden>
+    <h2 class="sec">Guía para entender la pizarra</h2>
+    <p class="lead">Si eres nuevo en las apuestas o en las estadísticas de la NFL, aquí está cada término de la página explicado con un ejemplo. Escribe en el buscador para encontrar uno.</p>
+    <div class="glos-tools"><label for="gsearch" style="flex:1;max-width:340px">Buscar término<input id="gsearch" type="search" placeholder="Ej. moneyline, spread, EPA"></label></div>
+    <div class="glos" id="glos">
+      <section data-s>
+        <h3>Convertidor de momios</h3>
+        <p class="intro">Escribe un momio americano (como -150 o +130) y ve lo que significa.</p>
+        <div class="conv">
+          <label for="cv-am">Momio americano<input id="cv-am" type="number" step="1" value="-150" inputmode="numeric"></label>
+          <label for="cv-st">Apuesta ($)<input id="cv-st" type="number" step="1" value="100" inputmode="numeric"></label>
+        </div>
+        <div class="res" id="cv-out" style="margin-top:10px"></div>
+      </section>
+    </div>
+  </section>
+  <p class="foot">Modelo estadístico con fines informativos. Ningún modelo garantiza resultados: apuesta solo lo que puedas perder y donde sea legal.</p>
+</main>
+
+<script id="data" type="application/json">/*__DATA__*/</script>
+<script id="season" type="application/json">/*__SEASON__*/</script>
+<script>
+(function(){
+const D = JSON.parse(document.getElementById('data').textContent);
+const $ = (s,el=document)=>el.querySelector(s), $$=(s,el=document)=>[...el.querySelectorAll(s)];
+const COLORS={ARI:"#97233F",ATL:"#A71930",BAL:"#241773",BUF:"#00338D",CAR:"#0085CA",CHI:"#0B162A",CIN:"#FB4F14",CLE:"#311D00",DAL:"#003594",DEN:"#FB4F14",DET:"#0076B6",GB:"#203731",HOU:"#03202F",IND:"#002C5F",JAX:"#006778",KC:"#E31837",LV:"#000000",LAC:"#0080C6",LA:"#003594",MIA:"#008E97",MIN:"#4F2683",NE:"#002244",NO:"#D3BC8D",NYG:"#0B2265",NYJ:"#125740",PHI:"#004C54",PIT:"#FFB612",SF:"#AA0000",SEA:"#002244",TB:"#D50A0A",TEN:"#4B92DB",WAS:"#5A1414"};
+const LIGHT={NO:1,PIT:1};
+const STATUS_ES={"Inactive":"Inactivo","Out":"Fuera","Injured Reserve":"IR","Doubtful":"Duda","Questionable":"Cuestionable","Suspension":"Suspendido","Physically Unable to Perform":"PUP"};
+const STAT_ES={attempts:"Intentos de pase",completions:"Pases completos",passing_yards:"Yardas de pase",passing_tds:"TD de pase",passing_interceptions:"Intercepciones",rushing_yards:"Yardas por tierra",carries:"Acarreos",rushing_tds:"TD por tierra",receptions:"Recepciones",receiving_yards:"Yardas por recepción",receiving_tds:"TD por recepción",targets:"Targets",p_anytime_td:"Anota TD"};
+const COUNT={passing_tds:1,passing_interceptions:1,rushing_tds:1,receiving_tds:1};
+const chip=t=>`<span class="tchip" style="background:${COLORS[t]||'#444'};color:${LIGHT[t]?'#1a1a1a':'#fff'}">${t}</span>`;
+const f1=v=>v==null?'–':(+v).toFixed(1), f0=v=>v==null?'–':Math.round(v), pct=v=>v==null?'–':Math.round(v*100)+'%';
+const sgn=v=>v==null?'–':(v>0?'+':'')+(+v).toFixed(1);
+const homeLine=s=>s==null?null:-s;  // nflverse: + = local favorito
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+$('#wk').textContent='S'+D.week;
+$('#gen').textContent=`Temporada ${D.season} · semana ${D.week} · actualizado ${D.generated}`;
+
+// ---------- Partidos ----------
+function gameInfo(g){
+  const ph=g.p_home, fav=ph>=.5?g.home_team:g.away_team, pf=Math.max(ph,1-ph);
+  const edge=g.edge_spread, atsSide=edge>0?g.home_team:g.away_team;
+  const atsLine=edge>0?homeLine(g.spread_line):g.spread_line;
+  const pc=edge>0?g.p_local_cubre:1-g.p_local_cubre;
+  const move=(g.spread_open!=null&&g.spread_close!=null)?g.spread_close-g.spread_open:null;
+  const wxRel=!g.indoor&&g.w_wind!=null&&(g.w_wind>=15||g.w_precip_prob>=50||g.w_temp<=32||(g.w_snow||0)>0);
+  return {fav,pf,edge,atsSide,atsLine,pc,move,wxRel};
+}
+function kick(g){
+  if(!g.kickoff_utc) return '';
+  try{return new Date(g.kickoff_utc).toLocaleString('es-MX',{weekday:'short',day:'numeric',month:'short',hour:'numeric',minute:'2-digit'});}catch(e){return g.kickoff_utc}
+}
+function wxText(g){
+  if(g.indoor) return 'Techado';
+  if(g.w_temp==null) return 'Sin pronóstico';
+  const c=Math.round((g.w_temp-32)*5/9);
+  return `${Math.round(g.w_temp)}°F / ${c}°C · viento ${Math.round(g.w_wind)} mph · lluvia ${g.w_precip_prob??0}%${g.weather?' · '+g.weather:''}`;
+}
+function lineupHtml(g){
+  const A=D.lineups?.[g.away_team], H=D.lineups?.[g.home_team]; if(!A&&!H) return '';
+  const off=t=>(t||[]).filter(r=>r.side==='off');
+  const ao=off(A), ho=off(H), n=Math.max(ao.length,ho.length);
+  const POS={QB:'QB',RB:'RB',WR:'WR',TE:'TE',LT:'Tackle izq.',LG:'Guard izq.',C:'Centro',RG:'Guard der.',RT:'Tackle der.'};
+  const cell=r=>!r?'<td>–</td>':`<td class="${r.replaces?'sub':''}">${esc(r.player)}${r.status==='Questionable'?' <b style="color:var(--warn)">Q</b>':''}${r.replaces?`<small>entra por ${esc(r.replaces)} (${STATUS_ES[r.replaced_status]||r.replaced_status})</small>`:''}</td>`;
+  let rows=''; for(let i=0;i<n;i++){const r=ao[i]||ho[i]; rows+=`<tr><td>${POS[r.pos]||r.pos}</td>${cell(ao[i])}${cell(ho[i])}</tr>`;}
+  const dch=[...(A||[]).map(r=>[g.away_team,r]),...(H||[]).map(r=>[g.home_team,r])].filter(([t,r])=>r.side==='def'&&r.replaces)
+    .map(([t,r])=>`<b>${t}</b> ${esc(r.player)} por ${esc(r.replaces)} (${STATUS_ES[r.replaced_status]||r.replaced_status}, ${r.pos})`).join(' · ');
+  return `<h4 style="margin:0;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">Titulares probables (ofensiva)</h4>
+   <div class="tbl lu"><table><thead><tr><th>Puesto</th><th>${g.away_team}</th><th>${g.home_team}</th></tr></thead><tbody>${rows}</tbody></table></div>
+   ${dch?`<div class="inj" style="padding:0">Cambios en defensa: ${dch}</div>`:''}`;
+}
+function card(g){
+  const I=gameInfo(g), live=g.status&&g.status!=='Scheduled';
+  const homeWin=g.pred_home_pts>=g.pred_away_pts;
+  const tags=[];
+  tags.push(`<span class="tag ${I.pf>=.7?'good':I.pf>=.6?'':'warn'}">${I.fav} ${pct(I.pf)} · confianza ${I.pf>=.7?'alta':I.pf>=.6?'media':'baja'}</span>`);
+  if(Math.abs(I.edge)>=3) tags.push(`<span class="tag flag">Valor ATS: ${I.atsSide} ${sgn(I.atsLine)} · ${pct(I.pc)} cubrir</span>`);
+  else if(Math.abs(I.edge)>=1.5) tags.push(`<span class="tag">Leve ATS: ${I.atsSide} ${sgn(I.atsLine)}</span>`);
+  if(I.move!=null&&Math.abs(I.move)>=2){
+    const towardModel=Math.sign(I.move)===Math.sign(I.edge);
+    tags.push(`<span class="tag ${towardModel?'good':'bad'}">Línea movida ${Math.abs(I.move).toFixed(1)} pts ${towardModel?'hacia el modelo':'en contra del modelo'}</span>`);
+  }
+  if(g.status==='Final'&&g.home_score_live!=null){const hw=g.home_score_live>g.away_score_live; const ok=(hw&&g.p_home>=.5)||(!hw&&g.p_home<.5);
+    tags.unshift(`<span class="tag ${ok?'good':'bad'}">${ok?'El modelo acertó al ganador':'El modelo falló al ganador'}</span>`);}
+  const subs=[g.away_team,g.home_team].map(t=>(D.lineups?.[t]||[]).filter(r=>r.replaces).length);
+  if(subs[0]+subs[1]>0) tags.push(`<span class="tag">Titulares que no juegan: ${g.away_team} ${subs[0]} · ${g.home_team} ${subs[1]}</span>`);
+  if(I.wxRel) tags.push(`<span class="tag warn">Clima: ${wxText(g).split(' · ').slice(0,3).join(' · ')}</span>`);
+  if(Math.abs(g.edge_total||0)>=4) tags.push(`<span class="tag">Total modelo ${f1(g.pred_total)} vs ${f1(g.total_line)}</span>`);
+  const qbch=(D.qb_changes||[]);
+  const qcH=qbch.some(n=>n.startsWith(g.home_team+':')), qcA=qbch.some(n=>n.startsWith(g.away_team+':'));
+  const inj=(g.injuries||[]).slice(0,5).map(x=>`<b>${esc(x.player)}</b> (${x.team} ${x.pos}, ${STATUS_ES[x.status]||x.status}, ${Math.round(x.snaps*100)}% snaps)`).join(' · ');
+  const ml=v=>v==null?'–':(v>0?'+':'')+Math.round(v);
+  const props=(g.props||[]);
+  const pr=props.map(p=>`<tr class="${p.status==='Questionable'?'q':''}"><td class="pl">${esc(p.player)} <small>${p.team} ${p.pos}</small></td>
+    <td>${f0(p.passing_yards)}</td><td>${p.passing_tds==null?'–':f1(p.passing_tds)}</td><td>${f1(p.carries)}</td><td>${f0(p.rushing_yards)}</td><td>${f1(p.receptions)}</td><td>${f0(p.receiving_yards)}</td><td>${pct(p.p_anytime_td)}</td></tr>`).join('');
+  return `<article class="game" data-id="${g.game_id}">
+  <div class="g-head"><span>${esc(kick(g))} · ${esc(g.venue||'')}${g.country&&g.country!=='USA'?' ('+esc(g.city)+')':''}</span>
+    ${live?`<span class="live">${g.status==='In Progress'?'En vivo':esc(g.status)} ${g.away_score_live??''}–${g.home_score_live??''}</span>`:`<span>${esc(wxText(g))}</span>`}</div>
+  <div class="score">
+    <div class="team">${chip(g.away_team)}<span class="tname">${esc(g.away_s_wins!=null?`${g.away_s_wins}-${g.away_s_losss} · `:'')}visitante</span><span class="qb ${qcA?'changed':''}">${esc(g.away_qb_name||'')}</span></div>
+    <div><div class="pts"><span class="${homeWin?'lose':'win'}">${f0(g.pred_away_pts)}</span><small>–</small><span class="${homeWin?'win':'lose'}">${f0(g.pred_home_pts)}</span></div><div class="ptslabel">marcador proyectado</div></div>
+    <div class="team home">${chip(g.home_team)}<span class="tname">local · ${esc(g.home_s_wins!=null?`${g.home_s_wins}-${g.home_s_losss}`:'')}</span><span class="qb ${qcH?'changed':''}">${esc(g.home_qb_name||'')}</span></div>
+  </div>
+  <div class="probbar"><div class="bar" role="img" aria-label="Probabilidad de victoria: ${g.away_team} ${pct(1-g.p_home)}, ${g.home_team} ${pct(g.p_home)}"><i class="a" style="width:${(1-g.p_home)*100}%"></i><i class="h" style="width:${g.p_home*100}%"></i></div>
+    <div class="barlbl"><b>${g.away_team} ${pct(1-g.p_home)}</b><span style="color:var(--muted)">mercado ${g.home_team} ${pct(g.p_mercado_local)}</span><b>${pct(g.p_home)} ${g.home_team}</b></div></div>
+  <div class="lines">
+    <div><div class="k">Spread ${g.home_team}</div><div class="m">Modelo ${sgn(-g.pred_margin)} · Línea ${sgn(homeLine(g.spread_line))} ${g.spread_open!=null?`<span class="mv">(abrió ${sgn(homeLine(g.spread_open))})</span>`:''}</div></div>
+    <div><div class="k">Total (O/U)</div><div class="m">Modelo ${f1(g.pred_total)} · Línea ${f1(g.total_line)} ${g.total_open!=null?`<span class="mv">(abrió ${f1(g.total_open)})</span>`:''}</div></div>
+  </div>
+  <div class="tags">${tags.join('')}</div>
+  ${inj?`<div class="inj">Bajas clave: ${inj} · ajuste ${sgn(-g.inj_margin_adj)} pts al spread del local</div>`:''}
+  <details class="more"><summary>Detalle y props del partido</summary><div class="dbody">
+    <div class="mini">
+      <div><span>Moneyline justo ${g.home_team}</span><span>${ml(g.moneyline_justa_local)}</span></div>
+      <div><span>ML casa ${g.home_team}</span><span>${ml(g.home_ml_close)} <small>(abrió ${ml(g.home_ml_open)})</small></span></div>
+      <div><span>ML casa ${g.away_team}</span><span>${ml(g.away_ml_close)}</span></div>
+      <div><span>Prob. Over ${f1(g.total_line)}</span><span>${pct(g.p_over)}</span></div>
+      <div><span>Elo ${g.away_team} / ${g.home_team}</span><span>${f0(g.away_elo)} / ${f0(g.home_elo)}</span></div>
+      <div><span>QB EPA/jugada</span><span>${(g.away_qb_rating??0).toFixed(2)} / ${(g.home_qb_rating??0).toFixed(2)}</span></div>
+      <div><span>EPA of./def. ${g.away_team}</span><span>${(g.away_ew_off_epa??0).toFixed(2)} / ${(g.away_ew_def_epa??0).toFixed(2)}</span></div>
+      <div><span>EPA of./def. ${g.home_team}</span><span>${(g.home_ew_off_epa??0).toFixed(2)} / ${(g.home_ew_def_epa??0).toFixed(2)}</span></div>
+      <div><span>Racha ${g.away_team} / ${g.home_team}</span><span>${sgn(g.away_streak).replace('.0','')} / ${sgn(g.home_streak).replace('.0','')}</span></div>
+      <div><span>Descanso (días)</span><span>${f0(g.away_rest)} / ${f0(g.home_rest)}</span></div>
+      <div><span>H2H local (10 años)</span><span>${pct(g.h2h_home_winpct)} de ${f0(g.h2h_n)}</span></div>
+      <div><span>Sin ajuste lesiones</span><span>${g.home_team} ${pct(g.p_home_base)}</span></div>
+    </div>
+    ${lineupHtml(g)}
+    ${props.length?`<div class="tbl"><table><thead><tr><th>Jugador</th><th>Pase yds</th><th>Pase TD</th><th>Acarreos</th><th>Yds tierra</th><th>Recep.</th><th>Yds recep.</th><th>Anota TD</th></tr></thead><tbody>${pr}</tbody></table></div>`:''}
+  </div></details>
+</article>`;
+}
+let gfilter='all';
+function renderGames(){
+  const gs=D.games.filter(g=>{const I=gameInfo(g);
+    if(gfilter==='ats')return Math.abs(I.edge)>=1.5;
+    if(gfilter==='conf')return I.pf>=.7;
+    if(gfilter==='move')return I.move!=null&&Math.abs(I.move)>=2;
+    if(gfilter==='wx')return I.wxRel; return true;});
+  $('#games').innerHTML=gs.length?gs.map(card).join(''):'<p class="lead">Ningún partido cumple este filtro esta semana.</p>';
+}
+$$('#gfilters .chipbtn').forEach(b=>b.addEventListener('click',()=>{gfilter=b.dataset.f;$$('#gfilters .chipbtn').forEach(x=>x.setAttribute('aria-pressed',x===b));renderGames();}));
+
+// alerts + KPIs
+const al=[];
+(D.qb_changes||[]).forEach(n=>al.push(`<div class="alert"><b>Cambio de QB</b><span>${esc(n)}</span></div>`));
+D.games.forEach(g=>{const I=gameInfo(g); if(I.move!=null&&Math.abs(I.move)>=4) al.push(`<div class="alert"><b>${g.away_team} @ ${g.home_team}</b><span>La línea pasó de ${g.home_team} ${sgn(homeLine(g.spread_open))} a ${sgn(homeLine(g.spread_close))}. Un movimiento así suele venir de una lesión o de dinero fuerte.</span></div>`);});
+$('#alerts').innerHTML=al.join('');
+const ens=D.backtest.find(r=>r.modelo==='Ensamble')||{}, mk=D.backtest.find(r=>r.modelo.startsWith('Mercado'))||{};
+const atsN=D.games.filter(g=>Math.abs(gameInfo(g).edge)>=3).length;
+const strong=D.games.filter(g=>gameInfo(g).pf>=.7).length;
+$('#kpis').innerHTML=[
+  [`${(ens['acierto_%']||0).toFixed(1)}%`,'Acierto histórico ganador'],
+  [`${(mk['acierto_%']||0).toFixed(1)}%`,'Referencia: spread Vegas'],
+  [D.games.length,'Partidos esta semana'],
+  [strong,'Favoritos ≥ 70%'],
+  [atsN,'Picks ATS con valor ≥ 3 pts']].map(([v,l])=>`<div class="kpi"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('');
+
+// ---------- Props ----------
+const players=D.games.flatMap(g=>(g.props||[]).map(p=>({...p,game:`${g.away_team} @ ${g.home_team}`})));
+let pfilter='all';
+function renderProps(){
+  const q=($('#psearch').value||'').toLowerCase();
+  const rows=players.filter(p=>(pfilter==='all'||p.pos===pfilter)&&(!q||(p.player+' '+p.team+' '+p.game).toLowerCase().includes(q)));
+  const qb=pfilter==='QB';
+  const head=qb?['Jugador','Partido','Intentos','Completos','Pase yds','Pase TD','INT','Yds tierra']
+                :['Jugador','Partido','Pase yds','Acarreos','Yds tierra','Targets','Recep.','Yds recep.','Anota TD'];
+  const body=rows.map(p=>qb?
+    `<tr class="${p.status==='Questionable'?'q':''}"><td class="pl">${esc(p.player)} <small>${p.team}</small></td><td>${p.game}</td><td>${f1(p.attempts)}</td><td>${f1(p.completions)}</td><td>${f0(p.passing_yards)}</td><td>${f1(p.passing_tds)}</td><td>${f1(p.passing_interceptions)}</td><td>${f0(p.rushing_yards)}</td></tr>`:
+    `<tr class="${p.status==='Questionable'?'q':''}"><td class="pl">${esc(p.player)} <small>${p.team} ${p.pos}</small></td><td>${p.game}</td><td>${f0(p.passing_yards)}</td><td>${f1(p.carries)}</td><td>${f0(p.rushing_yards)}</td><td>${f1(p.targets)}</td><td>${f1(p.receptions)}</td><td>${f0(p.receiving_yards)}</td><td>${pct(p.p_anytime_td)}</td></tr>`).join('');
+  $('#ptable').innerHTML=`<thead><tr>${head.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${body}</tbody>`;
+}
+$$('#pfilters .chipbtn').forEach(b=>b.addEventListener('click',()=>{pfilter=b.dataset.p;$$('#pfilters .chipbtn').forEach(x=>x.setAttribute('aria-pressed',x===b));renderProps();}));
+$('#psearch').addEventListener('input',renderProps);
+const rem=D.props_removed||[];
+$('#removed').textContent=rem.length?'Excluidos por lesión (su volumen se repartió entre compañeros): '+rem.map(r=>`${r.player} (${r.team}, ${STATUS_ES[r.status]||r.status})`).join(', ')+'. Q = cuestionable.':'';
+
+// calculadora
+function erf(x){const s=Math.sign(x);x=Math.abs(x);const t=1/(1+.3275911*x);const y=1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-.284496736)*t+.254829592)*t*Math.exp(-x*x);return s*y}
+const ncdf=(x,m,s)=>.5*(1+erf((x-m)/(s*Math.SQRT2)));
+function poisCdf(k,l){let s=0,t=Math.exp(-l);for(let i=0;i<=k;i++){s+=t;t*=l/(i+1)}return s}
+function pOver(p,stat,line){
+  const mu=p[stat]; if(mu==null)return null;
+  if(COUNT[stat]) return 1-poisCdf(Math.floor(line),mu);
+  const r=D.sd_ratio[`${p.pos}|${stat}`]??.5; const sd=Math.max(r*mu,0.5);
+  // líneas .5: sin empates; líneas enteras: corrección de continuidad
+  return 1-ncdf(Number.isInteger(line)?line+.5:line,mu,sd);
+}
+const fairAm=p=>p<=0||p>=1?'–':(p>=.5?Math.round(-100*p/(1-p)):'+'+Math.round(100*(1-p)/p));
+const payout=am=>am<0?100/(-am)*100:am;  // ganancia por $100
+const sel=$('#c-player'), ss=$('#c-stat');
+sel.innerHTML=players.map((p,i)=>`<option value="${i}">${esc(p.player)} · ${p.team} ${p.pos}</option>`).join('');
+function statsFor(p){return Object.keys(STAT_ES).filter(k=>k!=='p_anytime_td'&&p[k]!=null)}
+function fillStats(){const p=players[+sel.value]; if(!p)return; const st=statsFor(p); ss.innerHTML=st.map(k=>`<option value="${k}">${STAT_ES[k]}</option>`).join(''); const pref=['passing_yards','rushing_yards','receiving_yards'].find(k=>st.includes(k)); if(pref)ss.value=pref; setLine();}
+function setLine(){const p=players[+sel.value]; const mu=p[ss.value]; $('#c-line').value=mu==null?0:(Math.floor(mu)+.5); calc();}
+function calc(){
+  const p=players[+sel.value]; if(!p){$('#calcres').innerHTML='';return}
+  const st=ss.value, line=parseFloat($('#c-line').value)||0, po=pOver(p,st,line);
+  const out=[[f1(p[st]),'Proyección'],[pct(po),'Prob. Over'],[pct(po==null?null:1-po),'Prob. Under'],[`${fairAm(po)} / ${fairAm(1-po)}`,'Momio justo O / U']];
+  [['#c-odds',po,'Over'],['#c-odds-u',po==null?null:1-po,'Under']].forEach(([id,pp,lab])=>{
+    const am=parseFloat($(id).value); if(!isNaN(am)&&am!==0&&pp!=null){const ev=pp*payout(am)-(1-pp)*100;
+      out.push([`<span class="${ev>=0?'ev-pos':'ev-neg'}">${ev>=0?'+':''}${ev.toFixed(1)}</span>`,`Valor esperado ${lab} por $100`]);}});
+  $('#calcres').innerHTML=out.map(([v,l])=>`<div class="kpi"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('');
+}
+sel.addEventListener('change',fillStats); ss.addEventListener('change',setLine);
+['#c-line','#c-odds','#c-odds-u'].forEach(id=>$(id).addEventListener('input',calc));
+$('#calc').addEventListener('submit',e=>e.preventDefault());
+
+// ---------- Lesiones ----------
+const byTeam={}; (D.injury_list||[]).forEach(r=>{(byTeam[r.team]=byTeam[r.team]||[]).push(r)});
+const order={"Inactive":0,"Out":0,"Injured Reserve":1,"Doubtful":2,"Suspension":1,"Physically Unable to Perform":1,"Questionable":3};
+const CL=D.cleared||[];
+$('#injlist').insertAdjacentHTML('beforebegin', CL.length?`<div class="panel" style="margin-bottom:12px"><h3 style="font-family:var(--f-display);font-size:20px;margin:0 0 6px">Habilitados para jugar</h3><p style="margin:0;font-size:14px">Estaban en duda en el reporte oficial y ya aparecen activos: ${CL.map(c=>`<b>${esc(c.name)}</b> (${c.team} ${esc(c.pos)})`).join(', ')}.</p></div>`:'');
+$('#injlist').innerHTML=Object.keys(byTeam).sort().map(t=>`<div class="panel"><h3>${chip(t)} <span>${byTeam[t].length} jugadores</span></h3>${
+  byTeam[t].sort((a,b)=>(order[a.status]??9)-(order[b.status]??9)).map(r=>{const s=STATUS_ES[r.status]||r.status;
+   return `<div class="injrow"><span><b>${esc(r.name)}</b> <small style="color:var(--muted)">${esc(r.pos||'')}</small></span><span class="st ${r.status==='Injured Reserve'||r.status==='Inactive'?'IR':esc(r.status)}">${esc(s)}</span>${r.detail?`<span class="d">${esc(String(r.detail).slice(0,160))}${String(r.detail).length>160?'…':''}</span>`:''}</div>`}).join('')}</div>`).join('');
+
+// ---------- Modelo ----------
+$('#bt').innerHTML='<thead><tr><th>Modelo</th><th>Acierto ganador</th><th>Log-loss</th><th>Brier</th></tr></thead><tbody>'+D.backtest.map(r=>`<tr><td>${esc(r.modelo)}</td><td>${r['acierto_%'].toFixed(1)}%</td><td>${r.log_loss.toFixed(3)}</td><td>${r.brier.toFixed(3)}</td></tr>`).join('')+'</tbody>';
+$('#ats').innerHTML='<thead><tr><th>Diferencia mínima</th><th>Partidos</th><th>Acierto ATS</th></tr></thead><tbody>'+D.ats.map(r=>`<tr><td>≥ ${r.edge_min_pts} pts</td><td>${r.partidos}</td><td>${r['acierto_ATS_%'].toFixed(1)}%</td></tr>`).join('')+'</tbody>';
+const ic=D.injury_coefs||{}, v=ic.validacion_2023_2025||{};
+$('#method').innerHTML=`
+<h3>Variables</h3><ul>
+<li><b>Rendimiento y rachas:</b> récord, % de victorias, racha actual, récord de local y de visitante.</li>
+<li><b>Ofensiva y defensiva:</b> puntos, yardas, EPA por jugada (pase y carrera), % de éxito, sacks, intercepciones y balance de pérdidas.</li>
+<li><b>Tendencias:</b> últimos 3, 5 y 10 partidos, más promedios que dan más peso a lo reciente.</li>
+<li><b>Calendario y descanso:</b> días de descanso, semana corta, después de bye, partidos seguidos de visita, juego divisional y sede neutral.</li>
+<li><b>Enfrentamientos y playoffs:</b> historial directo de 10 años y desempeño de la temporada anterior.</li>
+<li><b>Avanzadas:</b> rating Elo y calificación del QB titular por EPA por jugada de pase.</li></ul>
+<h3>Lesiones</h3>
+<p>Cada titular ausente vale según su % de snaps en los últimos 4 partidos. Con 10 años de reportes oficiales (${(ic.n_partidos||2761)} partidos), una regresión estimó que un titular ofensivo completo vale <b>${(ic.margin_off||0).toFixed(2)} pts</b> de margen y uno defensivo <b>${(ic.margin_def||0).toFixed(2)} pts</b>. Fuera de muestra (2023-2025), el error del margen bajó de ${(v.MAE_margen_sin_lesiones||0).toFixed(2)} a ${(v.MAE_margen_con_lesiones||0).toFixed(2)} pts. Si el QB titular está fuera, el modelo usa al siguiente del depth chart con su propia calificación.</p>
+<h3>Clima</h3><p>Se usa el pronóstico de Open-Meteo a la hora del kickoff, con temperatura y viento como variables del modelo. En estadios techados no aplica.</p>
+<h3>Líneas</h3><p>Las líneas de apertura y actuales son de DraftKings vía ESPN. Cada actualización guarda una foto para seguir el movimiento. Si la línea se mueve en contra del modelo, el mercado puede saber algo, como una lesión de último momento.</p>
+<h3>Lo que el modelo no hace</h3><p>No le gana al mercado en totales (Over/Under), así que úsalo para ganador, spread y props. Las props mejoran entre 2 y 5% sobre el promedio de temporada, una ventaja pequeña.</p>
+<p class="foot">Fuentes: nflverse (calendario, play-by-play, estadísticas, lesiones, snaps, depth charts), ESPN (líneas y lesiones) y Open-Meteo (clima).</p>`;
+
+// ---------- Temporada ----------
+const S=JSON.parse(document.getElementById('season').textContent||'{}');
+if(S.games){
+  $('#t-season').textContent=S.season;
+  $('#t-lead').textContent=`Resultados y estadísticas de las semanas 1 a ${S.last_week}, tabla de posiciones, líderes y calendario de las semanas siguientes.`;
+  const tviews=['res','pos','lid','cal'];
+  $$('#tseg button').forEach(b=>b.addEventListener('click',()=>{tviews.forEach(v=>$('#t-'+v).hidden=v!==b.dataset.v);$$('#tseg button').forEach(x=>x.setAttribute('aria-pressed',x===b));}));
+  // resultados
+  const wks=[...new Set(S.games.map(g=>g.week))].sort((a,b)=>a-b);
+  let rw=wks[wks.length-1];
+  $('#rweeks').innerHTML=wks.map(w=>`<button class="chipbtn" data-w="${w}" aria-pressed="${w===rw}">S${w}</button>`).join('');
+  const lineTxt=(g)=>{ if(g.spread==null)return ''; const hl=-g.spread; return `${g.home} ${hl>0?'+':''}${hl}`; };
+  function rcard(g){
+    const hw=g.hs>g.as, aw=g.as>g.hs;
+    let ats='';
+    if(g.cover==='push') ats=`<span class="tag">Spread ${lineTxt(g)}: empate (push)</span>`;
+    else if(g.cover){const t=g.cover==='home'?g.home:g.away; const l=g.cover==='home'?-g.spread:g.spread; ats=`<span class="tag good">Cubrió ${t} ${l>0?'+':''}${l}</span>`;}
+    const ou=g.ou?`<span class="tag ${g.ou==='over'?'warn':''}">${g.ou==='over'?'Over':g.ou==='under'?'Under':'Push'} ${g.total} (total ${g.as+g.hs})</span>`:'';
+    const B=g.box||{}, a=B.away||{}, h=B.home||{};
+    const st=[['Yardas totales','yds'],['Yardas por pase','pass'],['Yardas por tierra','rush'],['Pases completos/intentos','comp'],['Acarreos','car'],['Primeros downs','fd'],['Pérdidas de balón','to'],['Sacks a favor','sacks'],['Castigos (núm-yardas)','pen'],['EPA total','epa']];
+    const P=g.players||{};
+    const tb=(head,rows)=>rows.length?`<div class="tbl"><table><thead><tr>${head.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table></div>`:'';
+    const nm=(n,t,p)=>`<td class="pl">${esc(n)} <small>${t}${p?' '+p:''}</small></td>`;
+    const v=x=>x==null?'–':x;
+    return `<article class="rcard">
+      <div class="rrow">${chip(g.away)}
+        <div style="display:flex;justify-content:center;align-items:center;gap:12px"><span class="sc ${aw?'':'l'}">${g.as}</span><span class="mid">${g.ot?'Final (TE)':'Final'}<br>${esc(g.day?g.day.slice(0,3):'')} ${esc(g.date.slice(5))}</span><span class="sc ${hw?'':'l'}">${g.hs}</span></div>
+        ${chip(g.home)}</div>
+      <div class="rsub">${ats}${ou}${g.neutral?`<span class="tag">Sede neutral: ${esc(g.stadium)}</span>`:''}</div>
+      <details class="more"><summary>Estadísticas del partido</summary><div class="dbody box">
+        <div class="tbl"><table><thead><tr><th>Equipo</th><th>${g.away}</th><th>${g.home}</th></tr></thead><tbody>${st.map(([l,k])=>`<tr><td>${l}</td><td>${v(a[k])}</td><td>${v(h[k])}</td></tr>`).join('')}</tbody></table></div>
+        <h4>Pase</h4>${tb(['Jugador','C/I','Yds','TD','INT','Sacks'],(P.pass||[]).map(r=>`<tr>${nm(r[0],r[1])}<td>${r[2]}</td><td>${v(r[3])}</td><td>${v(r[4])}</td><td>${v(r[5])}</td><td>${v(r[6])}</td></tr>`))}
+        <h4>Carrera</h4>${tb(['Jugador','Acarreos','Yds','Prom.','TD'],(P.rush||[]).map(r=>`<tr>${nm(r[0],r[1],r[2])}<td>${v(r[3])}</td><td>${v(r[4])}</td><td>${v(r[5])}</td><td>${v(r[6])}</td></tr>`))}
+        <h4>Recepción</h4>${tb(['Jugador','Rec.','Targets','Yds','TD'],(P.rec||[]).map(r=>`<tr>${nm(r[0],r[1],r[2])}<td>${v(r[3])}</td><td>${v(r[4])}</td><td>${v(r[5])}</td><td>${v(r[6])}</td></tr>`))}
+        ${(P.def||[]).length?'<h4>Defensa (sacks e intercepciones)</h4>'+tb(['Jugador','Tackles','Sacks','INT'],P.def.map(r=>`<tr>${nm(r[0],r[1],r[2])}<td>${v(r[3])}</td><td>${v(r[4])}</td><td>${v(r[5])}</td></tr>`)):''}
+      </div></details></article>`;
+  }
+  const renderRes=()=>{$('#results').innerHTML=S.games.filter(g=>g.week===rw).map(rcard).join('');};
+  $$('#rweeks .chipbtn').forEach(b=>b.addEventListener('click',()=>{rw=+b.dataset.w;$$('#rweeks .chipbtn').forEach(x=>x.setAttribute('aria-pressed',x===b));renderRes();}));
+  renderRes();
+  // posiciones
+  $('#standings').innerHTML=S.standings.map(d=>`<div class="panel"><h3>${esc(d.div)}</h3><div class="tbl"><table><thead><tr><th>Equipo</th><th>G</th><th>P</th><th>E</th><th>PF</th><th>PC</th><th>Dif</th><th>Local</th><th>Visita</th><th>Div.</th><th>Racha</th><th>Últ. 5</th></tr></thead><tbody>${
+    d.teams.map(t=>`<tr><td class="pl"><span class="tchip" style="font-size:14px;min-width:40px;padding:0 4px;background:${COLORS[t.team]||'#444'};color:${LIGHT[t.team]?'#1a1a1a':'#fff'}">${t.team}</span> <small>${esc(t.name)}</small></td><td>${t.w}</td><td>${t.l}</td><td>${t.t}</td><td>${t.pf}</td><td>${t.pa}</td><td>${t.pf-t.pa>0?'+':''}${t.pf-t.pa}</td><td>${t.home}</td><td>${t.away}</td><td>${t.div}</td><td>${t.streak}</td><td><span class="form5">${t.last5.map(x=>`<i class="${x}" title="${x==='G'?'Ganó':x==='P'?'Perdió':'Empate'}"></i>`).join('')}</span></td></tr>`).join('')}</tbody></table></div></div>`).join('');
+  // líderes
+  const L=S.leaders, lt=(title,rows,head,fmt)=>`<div class="panel"><h3>${title}</h3><div class="tbl"><table><thead><tr><th>Jugador</th>${head.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr><td class="pl">${esc(r[0])} <small>${r[1]} ${r[2]}</small></td>${fmt(r).map(x=>`<td>${x??'–'}</td>`).join('')}</tr>`).join('')}</tbody></table></div></div>`;
+  const n0=x=>x==null?'–':Math.round(x);
+  $('#leaders').innerHTML=[
+    lt('Yardas por pase',L.pass_yds,['PJ','Yds','TD','INT','% comp.'],r=>[r[3],n0(r[4]),n0(r[5]),n0(r[6]),r[8]?Math.round(100*r[7]/r[8])+'%':'–']),
+    lt('Yardas por tierra',L.rush_yds,['PJ','Yds','Acarreos','Prom.','TD'],r=>[r[3],n0(r[4]),n0(r[5]),r[5]?(r[4]/r[5]).toFixed(1):'–',n0(r[6])]),
+    lt('Yardas por recepción',L.rec_yds,['PJ','Yds','Rec.','Targets','TD'],r=>[r[3],n0(r[4]),n0(r[5]),n0(r[6]),n0(r[7])]),
+    lt('Touchdowns (tierra + recepción)',L.tot_td,['PJ','Total','Tierra','Recep.'],r=>[r[3],n0(r[4]),n0(r[5]),n0(r[6])]),
+    lt('Sacks',L.sacks,['PJ','Sacks'],r=>[r[3],r[4]]),
+    lt('Intercepciones (defensa)',L.def_int,['PJ','INT'],r=>[r[3],n0(r[4])])].join('');
+  // calendario
+  const cw=[...new Set(S.schedule.map(g=>g.week))].sort((a,b)=>a-b);
+  let cwk=cw[0];
+  $('#cweeks').innerHTML=cw.map(w=>`<button class="chipbtn" data-w="${w}" aria-pressed="${w===cwk}">S${w}</button>`).join('');
+  const DAY={Thursday:'Jueves',Friday:'Viernes',Saturday:'Sábado',Sunday:'Domingo',Monday:'Lunes',Tuesday:'Martes',Wednesday:'Miércoles'};
+  const fmtDate=d=>{try{return new Date(d+'T12:00:00').toLocaleDateString('es-MX',{day:'numeric',month:'long'})}catch(e){return d}};
+  function renderCal(){
+    const gs=S.schedule.filter(g=>g.week===cwk); const days=[...new Set(gs.map(g=>g.date))];
+    const bye=(S.byes[String(cwk)]||[]);
+    $('#sched').innerHTML=(bye.length?`<div class="bye"><b>Descansan (bye):</b> ${bye.join(', ')}</div>`:'')+days.map(d=>{const dg=gs.filter(g=>g.date===d);
+      return `<div class="sched-day"><h4>${DAY[dg[0].day]||dg[0].day} ${fmtDate(d)}</h4>${dg.map(g=>{
+        const fav=g.spread==null?'':(g.spread>0?`${g.home} -${g.spread}`:g.spread<0?`${g.away} ${g.spread}`:'Pick');
+        return `<div class="srow"><span class="t">${esc(g.time||'')} ET</span><span class="mu">${chip(g.away)}<small>@</small>${chip(g.home)}<small>${esc(g.stadium||'')}${g.neutral?' · neutral':''}${g.div?' · divisional':''}</small></span><span class="ln">${fav?'Fav. '+fav:''}${g.total?'<br>O/U '+g.total:''}</span></div>`}).join('')}</div>`}).join('');
+  }
+  $$('#cweeks .chipbtn').forEach(b=>b.addEventListener('click',()=>{cwk=+b.dataset.w;$$('#cweeks .chipbtn').forEach(x=>x.setAttribute('aria-pressed',x===b));renderCal();}));
+  renderCal();
+}
+
+// ---------- Guía ----------
+const GLOS=[
+ {t:'Lo básico del futbol americano',i:'Para leer los marcadores y las estadísticas.',items:[
+  ['Touchdown (TD)','','Anotación que vale 6 puntos. Después viene el punto extra: 1 punto con patada o 2 puntos si intentan pasar o correr desde la yarda 2.','Un equipo que anota 3 TD con sus puntos extra suma 21 puntos.'],
+  ['Gol de campo (FG)','Field goal','Patada entre los postes que vale 3 puntos. Por eso muchos partidos se deciden por 3 puntos.',''],
+  ['Safety','','2 puntos para la defensa cuando derriba al rival dentro de su propia zona de anotación.',''],
+  ['Downs','Primer down','La ofensiva tiene 4 intentos (downs) para avanzar 10 yardas. Si lo logra consigue un "primer down" y vuelve a tener 4 intentos.',''],
+  ['Local / visitante','@','En la pizarra el formato es VISITANTE @ LOCAL. Jugar en casa vale en promedio 1.5 a 2.5 puntos.','JAX @ BAL significa que Jacksonville visita a Baltimore.'],
+  ['Sede neutral','','Partido fuera del estadio de ambos equipos, como los juegos internacionales en Madrid, Múnich o la Ciudad de México. No hay ventaja de local.',''],
+  ['Bye','Semana de descanso','Cada equipo descansa una semana en la temporada. Volver de un bye da un día extra de preparación.',''],
+  ['Semana corta','','Jugar el jueves después de haber jugado el domingo: solo 4 días de descanso. Suele perjudicar un poco.',''],
+  ['Tiempo extra (TE)','Overtime','Si el partido termina empatado se juega un periodo extra. Si sigue igual en temporada regular, queda empate.',''],
+  ['División','','Los 32 equipos están en 8 divisiones de 4. Juegan dos veces contra cada rival de división y esos partidos suelen ser más cerrados.','']]},
+ {t:'Tipos de apuesta',i:'Las tres apuestas principales de cada partido.',items:[
+  ['Moneyline','ML · a ganador','Apuestas solo a quién gana el partido, sin importar por cuántos puntos.','Si apuestas a KC moneyline y KC gana 21-20, ganas.'],
+  ['Spread','Línea · hándicap · diferencial','Puntos de ventaja que se le dan al equipo débil para emparejar la apuesta. El favorito lleva signo menos y el no favorito signo más.','SF -10 contra LV: SF tiene que ganar por 11 o más para que ganes. LV +10: ganas si LV gana o pierde por 9 o menos.'],
+  ['Cubrir el spread','ATS','"Contra el spread" (ATS, por sus siglas en inglés) significa que el equipo superó la línea. El favorito cubre si gana por más puntos que el spread; el no favorito cubre si pierde por menos o gana.','Línea NO -3, final NO 27-20: NO ganó por 7 y cubrió.'],
+  ['Push','Empate en la apuesta','Cuando el resultado cae exacto en la línea, la casa te devuelve el dinero.','Línea SEA -3 y SEA gana por 3: push.'],
+  ['Over / Under','Total · O/U · altas y bajas','Apuestas a si la suma de puntos de ambos equipos será mayor (Over) o menor (Under) que la línea que fija la casa.','O/U 44.5 y el partido termina 24-21 (45 puntos): gana el Over.'],
+  ['Prop','Apuesta especial','Apuesta sobre algo dentro del partido que no es el resultado, casi siempre la estadística de un jugador.','Josh Allen Over 245.5 yardas de pase.'],
+  ['Parlay','Combinada','Juntar varias apuestas en una sola: pagas más, pero tienen que ganar todas. Las probabilidades se multiplican y bajan rápido.','Tres apuestas de 55% cada una combinadas solo tienen 17% de ganar.']]},
+ {t:'Momios y probabilidades',i:'Cómo leer el precio de una apuesta.',items:[
+  ['Momio americano','Cuota','Con signo menos (-150): cuánto tienes que apostar para ganar $100. Con signo más (+130): cuánto ganas si apuestas $100.','-150: apuestas $150 para ganar $100. +130: apuestas $100 para ganar $130.'],
+  ['Momio decimal','','Cuánto recibes en total por cada $1 apostado, incluyendo lo que apostaste. Es el formato de muchas casas de Latinoamérica y Europa.','2.50: apuestas $100 y recibes $250 (ganancia de $150). -150 equivale a 1.67.'],
+  ['Probabilidad implícita','','La probabilidad que el momio "esconde". Sirve para comparar el momio de la casa con la probabilidad del modelo.','-150 implica 60%. +130 implica 43.5%. Usa el convertidor de arriba.'],
+  ['Vig o juice','Comisión de la casa','La ganancia de la casa. Por eso en una apuesta pareja las dos opciones pagan -110 y no +100, y las probabilidades implícitas suman más de 100%.','-110 y -110 suman 104.8%: ese 4.8% extra es la comisión.'],
+  ['Punto de equilibrio 52.4%','','Con momio -110 tienes que acertar 52.4% de tus apuestas solo para no perder dinero. Por eso acertar "más de la mitad" no basta.',''],
+  ['Momio justo','Fair odds','El momio que correspondería a la probabilidad del modelo sin la comisión de la casa. Si la casa paga más que el momio justo, la apuesta tiene valor.','El modelo da 60% → momio justo -150. Si la casa ofrece -120, pagan más de lo justo.'],
+  ['Valor esperado (EV)','Expected value','Lo que ganarías o perderías en promedio por apuesta si la repitieras muchas veces con esa misma probabilidad. Positivo (+) es bueno.','EV +8 por $100: a la larga, ganarías $8 por cada $100 apostados. Una sola apuesta puede perderse igual.'],
+  ['Valor','Edge · ventaja','La diferencia entre lo que piensa el modelo y lo que dice la casa. En la pizarra, "Valor ATS" aparece cuando el spread del modelo difiere 3 puntos o más de la línea.','Modelo NO -6, línea NO -3: diferencia de 3 pts a favor de NO.']]},
+ {t:'Cómo se mueven las líneas',i:'La casa ajusta las líneas durante la semana.',items:[
+  ['Línea de apertura','Open','La primera línea que publica la casa, normalmente el domingo o lunes anterior al partido.',''],
+  ['Línea actual','Close · cierre','La línea en este momento. Justo antes del partido se llama línea de cierre y es la predicción más precisa que existe, porque refleja toda la información y el dinero del mercado.',''],
+  ['Movimiento de línea','','Cambio entre la apertura y la línea actual. Los movimientos grandes casi siempre se deben a una lesión importante (sobre todo del QB) o a dinero de apostadores profesionales.','PHI abrió -5.5 y ahora está +3.5: se movió 9 puntos, señal de que pasó algo grande.'],
+  ['"Hacia el modelo" / "en contra"','','Si la línea se movió hacia lo que proyecta el modelo, el mercado coincide. Si se movió en contra, el mercado puede saber algo que el modelo no sabe; conviene revisar lesiones antes de apostar.','']]},
+ {t:'Props de jugadores',i:'Qué significa cada estadística de la sección Props.',items:[
+  ['Yardas de pase','Passing yards','Yardas que avanzan los pases completos del QB, contando lo que el receptor corre después de atrapar.','Una línea típica para un QB titular está entre 200 y 280 yardas.'],
+  ['Pases completos / intentos','C/I','Intentos son todos los pases que lanza el QB; completos son los que atrapó un compañero.','23/33 = 23 completos de 33 intentos (70%).'],
+  ['TD de pase','','Touchdowns que lanza el QB. Como son números pequeños (0, 1, 2, 3), se calculan con distribución de Poisson.','Línea 1.5: Over gana si lanza 2 o más TD.'],
+  ['Intercepción (INT)','','Pase del QB atrapado por la defensa rival. Para el QB es malo; para la defensa es una estadística a favor.',''],
+  ['Acarreos','Carries','Cuántas veces un jugador recibe el balón para correr. Mide cuánto lo usa su equipo.',''],
+  ['Yardas por tierra','Rushing yards','Yardas que gana un jugador corriendo con el balón.','15 acarreos para 75 yardas = promedio de 5.0 por acarreo.'],
+  ['Targets','Objetivos','Pases lanzados hacia un receptor, los atrape o no. Es el mejor indicador de cuánto lo buscan.',''],
+  ['Recepciones','','Pases que el jugador sí atrapó.','8 targets y 6 recepciones.'],
+  ['Yardas por recepción','Receiving yards','Yardas que gana un receptor con los pases que atrapa.',''],
+  ['Anota TD','Anytime TD','Probabilidad de que el jugador anote al menos un touchdown, corriendo o recibiendo, en cualquier momento del partido.','40% equivale a un momio justo de +150.'],
+  ['Proyección','','El número más probable según el modelo: combina la forma reciente del jugador, la calidad de la defensa rival y los puntos que se espera que anote su equipo.',''],
+  ['Calculadora de props','','Escribe la línea y el momio de tu casa y te da la probabilidad de Over y de Under y el valor esperado. Si el EV sale positivo, la apuesta tiene valor según el modelo.','Proyección 116 yardas, línea 89.5 → Over 64%. Si la casa paga -110, el EV es positivo.'],
+  ['Q (cuestionable)','','El jugador podría no jugar o jugar limitado. Su proyección asume que juega; revisa el reporte antes de apostar.','']]},
+ {t:'Estadísticas del modelo',i:'Los números avanzados que usa la pizarra.',items:[
+  ['EPA','Expected Points Added · puntos esperados agregados','Cuántos puntos agrega o quita cada jugada comparado con lo esperado en esa situación (down, distancia y posición en el campo). Es la mejor medida de eficiencia. Para la ofensiva, más alto es mejor; para la defensa, más bajo (negativo) es mejor.','Un pase de 15 yardas en 3ra y 10 tiene EPA alto; un sack en la misma jugada tiene EPA muy negativo.'],
+  ['EPA ofensivo / defensivo','EPA of. / def.','EPA promedio por jugada de la ofensiva de un equipo y el que permite su defensa. +0.10 por jugada es ofensiva de élite; -0.10 es mala.',''],
+  ['QB EPA/jugada','Calificación del QB','EPA promedio en las jugadas de pase de un QB, con más peso en los partidos recientes. Si el QB tiene pocos partidos, se ajusta hacia el nivel de un suplente.','0.15 es élite; 0.00 es promedio; -0.10 es nivel suplente.'],
+  ['Tasa de éxito','Success rate','Porcentaje de jugadas con EPA positivo. Mide la consistencia de una ofensiva.',''],
+  ['Elo','Rating Elo','Puntuación de la fuerza de cada equipo que sube cuando gana y baja cuando pierde, más si el margen es grande o el rival es fuerte. El promedio es 1505.','100 puntos de diferencia ≈ 64% de probabilidad de ganar en sede neutral.'],
+  ['Probabilidad de victoria','','Lo que calcula el modelo para cada equipo. 70% significa que, en 10 partidos así, ese equipo ganaría alrededor de 7; los otros 3 los perdería.',''],
+  ['Prob. del mercado','','La probabilidad que implican los momios de la casa, sin su comisión. Compárala con la del modelo para encontrar diferencias.',''],
+  ['Marcador proyectado','','Puntos esperados de cada equipo. Es un promedio, no una predicción exacta: en la NFL el marcador real se aleja en promedio unos 7 a 8 puntos por equipo.',''],
+  ['Ajuste por lesiones','','Puntos que se restan cuando falta un titular. Con 10 años de datos se calculó que un titular ofensivo vale 0.77 pts y uno defensivo 0.97 pts. Se pondera por su % de snaps.',''],
+  ['% de snaps','Snaps','Porcentaje de las jugadas del equipo en las que participa un jugador. 90% o más es un titular indiscutible.',''],
+  ['Racha','','+3 significa tres victorias seguidas; -2, dos derrotas seguidas.',''],
+  ['H2H','Head to head · historial directo','Resultados entre ambos equipos en los últimos 10 años.',''],
+  ['Acierto ganador','','Porcentaje de partidos donde el favorito del modelo ganó. 65% es muy bueno en la NFL; las casas de apuestas logran alrededor de 66%.',''],
+  ['Log-loss y Brier','','Miden qué tan buenas son las probabilidades, no solo los aciertos. Castigan decir 90% cuando el equipo pierde. Más bajo es mejor.',''],
+  ['Backtest walk-forward','Validación','Para probar el modelo honestamente se predijo cada temporada pasada usando solo los datos anteriores a ella, como si fuera en tiempo real.','']]},
+ {t:'Estatus de lesiones',i:'Cómo los reporta la NFL.',items:[
+  ['Inactivo','Inactive','Lista oficial de jugadores que no se uniforman ese día. Se publica 90 minutos antes del partido y es definitiva: si un jugador está inactivo, no juega.',''],
+  ['Habilitado','Active','Jugador que estaba en duda (Questionable o Doubtful) y finalmente sí juega porque no apareció en la lista de inactivos.',''],
+  ['Depth chart','Orden de titulares','Lista de cada equipo con el titular de cada puesto y sus suplentes en orden. Si el titular no juega, entra el siguiente.',''],
+  ['Titular probable','','Quién juega en cada puesto según el depth chart de hoy, quitando a inactivos, lesionados y Doubtful. En rojo aparece el suplente que entra y a quién reemplaza.','WR: Darius Cooper entra por DeVonta Smith (Inactivo).'],
+  ['Out','Fuera','No juega este partido.',''],
+  ['Doubtful','Duda','Muy poco probable que juegue (alrededor de 1 de cada 10 juega).',''],
+  ['Questionable','Cuestionable','Puede jugar o no; la mayoría termina jugando, a veces limitado.',''],
+  ['IR','Injured Reserve · reserva de lesionados','Lista de lesionados graves. El jugador se pierde al menos 4 partidos.',''],
+  ['PUP','Physically Unable to Perform','Jugador que no puede competir por una lesión de la temporada anterior o del campamento.','']]},
+ {t:'Apuesta con responsabilidad',i:'',items:[
+  ['Bankroll','','El dinero que separas solo para apostar. Una regla común es no apostar más de 1-2% de ese dinero en una sola apuesta.',''],
+  ['Varianza','','Aun con ventaja real puedes tener rachas largas de pérdidas. Un modelo que acierta 54% puede perder 6 de 10 apuestas seguidas sin estar mal.',''],
+  ['Límites','','Apuesta solo lo que puedas perder, donde sea legal y siendo mayor de edad. Si deja de ser entretenimiento, detente.','']]}];
+const glosEl=$('#glos');
+glosEl.insertAdjacentHTML('beforeend',GLOS.map(sec=>`<section data-s><h3>${sec.t}</h3>${sec.i?`<p class="intro">${sec.i}</p>`:''}<dl>${sec.items.map(([t,a,d,e])=>`<div class="term" data-q="${esc((t+' '+a+' '+d).toLowerCase())}"><dt>${t}${a?`<small>${a}</small>`:''}</dt><dd>${d}${e?`<span class="ex">Ejemplo: ${e}</span>`:''}</dd></div>`).join('')}</dl></section>`).join(''));
+$('#gsearch').addEventListener('input',e=>{const q=e.target.value.toLowerCase().trim();
+  $$('#glos section').forEach(sec=>{const terms=$$('.term',sec); if(!terms.length){sec.hidden=!!q;return}
+    let any=false; terms.forEach(t=>{const m=!q||t.dataset.q.includes(q); t.hidden=!m; any=any||m}); sec.hidden=!any;});});
+function conv(){const am=parseFloat($('#cv-am').value), st=parseFloat($('#cv-st').value)||0;
+  if(isNaN(am)||Math.abs(am)<100){$('#cv-out').innerHTML='<p class="lead">Un momio americano es -100 o menor, o +100 o mayor.</p>';return}
+  const dec=am<0?1+100/(-am):1+am/100, p=1/dec, win=st*(dec-1);
+  $('#cv-out').innerHTML=[[`${(p*100).toFixed(1)}%`,'Probabilidad implícita'],[dec.toFixed(2),'Momio decimal'],[`$${win.toFixed(2)}`,`Ganancia si apuestas $${st}`],[`$${(st+win).toFixed(2)}`,'Recibes en total']].map(([v,l])=>`<div class="kpi"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('');}
+['#cv-am','#cv-st'].forEach(id=>$(id).addEventListener('input',conv)); conv();
+
+// ---------- Navegación por hash ----------
+const VIEWS=['partidos','props','temporada','lesiones','modelo','guia'];
+function route(){const h=(location.hash||'#partidos').slice(1); const v=VIEWS.includes(h)?h:'partidos';
+  VIEWS.forEach(x=>{$('#v-'+x).hidden=x!==v}); $$('nav.tabs a').forEach(a=>a.toggleAttribute('aria-current',a.getAttribute('href')==='#'+v)); $$('nav.tabs a').forEach(a=>{if(a.getAttribute('href')==='#'+v)a.setAttribute('aria-current','page')});}
+window.addEventListener('hashchange',()=>{route();window.scrollTo(0,0)});
+renderGames(); renderProps(); fillStats(); route();
+})();
+</script>

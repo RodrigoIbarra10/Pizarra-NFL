@@ -1,0 +1,12 @@
+{
+ "margin_off": 0.7746161744137373,
+ "margin_def": 0.9737564328468035,
+ "pts_off": 0.5136571976347192,
+ "pts_def": 0.8333545519274156,
+ "validacion_2023_2025": {
+  "MAE_margen_sin_lesiones": 10.046213642875696,
+  "MAE_margen_con_lesiones": 10.006108279701756,
+  "partidos": 855
+ },
+ "n_partidos": 2761
+}

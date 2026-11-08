@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+# Datos descargados de nflverse/ESPN (se regeneran con download_data.py / predict.py --update)
+data/*
+!data/injury_coefs.json
+!data/lines_history.csv
