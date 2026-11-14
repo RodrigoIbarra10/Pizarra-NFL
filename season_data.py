@@ -177,7 +177,35 @@ def build(season=None, last_week=None):
         playing = set(s[s.week == wk].home_team) | set(s[s.week == wk].away_team)
         byes[int(wk)] = sorted(set(TEAM_NAMES) - playing)
 
-    out = {"season": season, "last_week": last_week, "games": games, "standings": standings,
+    # ---- Récord del modelo (predicciones guardadas antes de cada semana) ----
+    record, by_id = [], {}
+    for f in sorted(OUT.glob(f"predicciones_{season}_w*.csv")):
+        pr = pd.read_csv(f, usecols=lambda c: c in {"game_id", "week", "p_home", "pred_home_pts", "pred_away_pts",
+                                                     "pred_margin", "pred_total", "spread_line", "total_line",
+                                                     "edge_spread", "edge_total"})
+        pr = pr.merge(g[["game_id", "home_score", "away_score"]], on="game_id")
+        pr = pr[pr.home_score.notna() & (pr.week <= last_week)]
+        if pr.empty:
+            continue
+        m, t = pr.home_score - pr.away_score, pr.home_score + pr.away_score
+        hit = (pr.p_home >= .5) == (m > 0)
+        cov, ou = np.sign(m - pr.spread_line), np.sign(t - pr.total_line)
+        ats_ok = (np.sign(pr.edge_spread) == cov)
+        val = (pr.edge_spread.abs() >= 1.5) & (cov != 0)
+        for x, h, a_ok, o in zip(pr.itertuples(), hit, ats_ok, np.sign(pr.edge_total) == ou):
+            by_id[x.game_id] = {"p_home": round(float(x.p_home), 3), "pa": r1(x.pred_away_pts), "ph": r1(x.pred_home_pts),
+                                "hit": bool(h), "ats_ok": bool(a_ok), "edge": r1(x.edge_spread), "ou_ok": bool(o)}
+        record.append({"week": int(pr.week.iloc[0]), "games": int(len(pr)), "winners": int(hit.sum()),
+                       "ats_value": int((ats_ok & val).sum()), "ats_value_n": int(val.sum()),
+                       "ou": int(((np.sign(pr.edge_total) == ou) & (ou != 0)).sum()), "ou_n": int((ou != 0).sum()),
+                       "fav_market": int(((pr.spread_line > 0) == (m > 0)).sum()),
+                       "mae_margin": r1((m - pr.pred_margin).abs().mean()),
+                       "mae_margin_mkt": r1((m - pr.spread_line).abs().mean())})
+    for gm in games:
+        if gm["id"] in by_id:
+            gm["model"] = by_id[gm["id"]]
+
+    out = {"season": season, "last_week": last_week, "record": record, "games": games, "standings": standings,
            "leaders": leaders, "schedule": schedule, "byes": byes, "team_names": TEAM_NAMES}
     OUT.mkdir(exist_ok=True)
     (OUT / "temporada.json").write_text(json.dumps(out, ensure_ascii=False, allow_nan=False, default=str))

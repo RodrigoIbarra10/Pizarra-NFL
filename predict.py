@@ -124,6 +124,7 @@ def main():
             print("Aviso: sin datos en vivo ->", e)
     if not lv.empty:
         target = target.merge(lv, on=["home_team", "away_team"], how="left")
+        target["indoor"] = target.indoor.fillna(False).astype(bool) | target.roof.isin(["dome", "closed"])
         outdoor = target.indoor.eq(False)
         target.loc[outdoor & target.w_temp.notna(), "temp"] = target.w_temp
         target.loc[outdoor & target.w_wind.notna(), "wind"] = target.w_wind

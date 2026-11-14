@@ -99,33 +99,57 @@ def parse_scoreboard(sb):
     return pd.DataFrame(rows)
 
 
+def _openmeteo_batch(df):
+    """Una sola solicitud para todos los estadios (evita el límite 429 de Open-Meteo)."""
+    locs = [(r.home_team, CITY_COORDS.get(r.city), pd.Timestamp(r.kickoff_utc).tz_convert("UTC").floor("h"))
+            for r in df.itertuples(index=False)]
+    locs = [x for x in locs if x[1] is not None]
+    if not locs:
+        return {}
+    d0 = min(x[2] for x in locs).date(); d1 = max(x[2] for x in locs).date()
+    url = ("https://api.open-meteo.com/v1/forecast?latitude={}&longitude={}"
+           "&hourly=temperature_2m,wind_speed_10m,wind_gusts_10m,precipitation_probability,"
+           "precipitation,snowfall,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph"
+           "&precipitation_unit=inch&timezone=UTC&start_date={}&end_date={}").format(
+        ",".join(str(x[1][0]) for x in locs), ",".join(str(x[1][1]) for x in locs), d0, d1)
+    j = None
+    for wait in (0, 5, 15, 30, 60):
+        time.sleep(wait)
+        r = subprocess.run(["curl", "-sS", "--compressed", "-m", "30", "-w", "\\n%{http_code}", url],
+                           capture_output=True, text=True)
+        body, _, code = r.stdout.rpartition("\n")
+        if code == "200":
+            j = json.loads(body)
+            break
+        print(f"  Open-Meteo respondió {code or r.stderr.strip()[:60]}; reintento en {wait or 5}s")
+    if j is None:
+        return {}
+    j = j if isinstance(j, list) else [j]
+    out = {}
+    for (team, _, ko), loc in zip(locs, j):
+        h = loc["hourly"]
+        try:
+            i = h["time"].index(ko.strftime("%Y-%m-%dT%H:00"))
+        except ValueError:
+            continue
+        out[team] = dict(w_temp=h["temperature_2m"][i], w_wind=h["wind_speed_10m"][i],
+                         w_gust=h["wind_gusts_10m"][i], w_precip_prob=h["precipitation_probability"][i],
+                         w_precip=h["precipitation"][i], w_snow=h["snowfall"][i], w_code=h["weather_code"][i])
+    return out
+
+
 def weather(df):
-    """Pronóstico Open-Meteo en la hora del kickoff para cada partido."""
+    """Pronóstico Open-Meteo a la hora del kickoff; respaldo con el clima que publica ESPN."""
+    om = _openmeteo_batch(df)
     out = []
     for r in df.itertuples(index=False):
         w = {"home_team": r.home_team, "w_temp": np.nan, "w_wind": np.nan, "w_gust": np.nan,
              "w_precip_prob": np.nan, "w_precip": np.nan, "w_snow": np.nan, "w_code": np.nan}
-        ll = CITY_COORDS.get(r.city)
-        if ll is not None:
-            ko = pd.Timestamp(r.kickoff_utc).tz_convert("UTC").floor("h")
-            url = ("https://api.open-meteo.com/v1/forecast?latitude={}&longitude={}"
-                   "&hourly=temperature_2m,wind_speed_10m,wind_gusts_10m,precipitation_probability,"
-                   "precipitation,snowfall,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph"
-                   "&precipitation_unit=inch&timezone=UTC&start_date={}&end_date={}").format(
-                ll[0], ll[1], ko.date(), ko.date())
-            try:
-                j = _get(url)["hourly"]
-                i = j["time"].index(ko.strftime("%Y-%m-%dT%H:00"))
-                w.update(w_temp=j["temperature_2m"][i], w_wind=j["wind_speed_10m"][i],
-                         w_gust=j["wind_gusts_10m"][i], w_precip_prob=j["precipitation_probability"][i],
-                         w_precip=j["precipitation"][i], w_snow=j["snowfall"][i], w_code=j["weather_code"][i])
-            except Exception as ex:  # fuera del horizonte de pronóstico, conexión, etc.
-                print("Aviso clima", r.home_team, str(ex)[:80])
-        if np.isnan(w["w_temp"]):           # respaldo: clima del resumen de ESPN
+        w.update({k: (np.nan if v is None else v) for k, v in om.get(r.home_team, {}).items()})
+        if np.isnan(w["w_temp"]) and r.status == "Scheduled":     # respaldo: ESPN
             try:
                 sm = DATA / "espn_sum" / f"{r.espn_id}.json"
-                if not sm.exists():
-                    _get(f"{ESPN}/summary?event={r.espn_id}", sm)
+                _get(f"{ESPN}/summary?event={r.espn_id}", sm)
                 gw = json.loads(sm.read_text()).get("gameInfo", {}).get("weather") or {}
                 if gw.get("temperature") is not None:
                     w.update(w_temp=float(gw["temperature"]), w_gust=float(gw.get("gust") or np.nan),
@@ -134,6 +158,7 @@ def weather(df):
             except Exception as ex:
                 print("  sin clima para", r.home_team, str(ex)[:60])
         out.append(w)
+    print(f"Clima: Open-Meteo {len(om)} estadios, total con dato {sum(not np.isnan(x['w_temp']) for x in out)}/{len(out)}")
     return pd.DataFrame(out)
 
 

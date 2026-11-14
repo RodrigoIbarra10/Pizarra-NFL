@@ -249,6 +249,7 @@ input,select{font:inherit;font-size:15px;color:var(--fg);background:var(--surfac
       <button data-v="res" aria-pressed="true">Resultados</button><button data-v="pos" aria-pressed="false">Posiciones</button><button data-v="lid" aria-pressed="false">Líderes</button><button data-v="cal" aria-pressed="false">Calendario</button>
     </div>
     <div id="t-res">
+      <div id="record"></div>
       <div class="weeks" id="rweeks" role="group" aria-label="Semana"></div>
       <div class="rgrid" id="results"></div>
     </div>
@@ -367,7 +368,7 @@ function card(g){
     <div class="team home">${chip(g.home_team)}<span class="tname">local · ${esc(g.home_s_wins!=null?`${g.home_s_wins}-${g.home_s_losss}`:'')}</span><span class="qb ${qcH?'changed':''}">${esc(g.home_qb_name||'')}</span></div>
   </div>
   <div class="probbar"><div class="bar" role="img" aria-label="Probabilidad de victoria: ${g.away_team} ${pct(1-g.p_home)}, ${g.home_team} ${pct(g.p_home)}"><i class="a" style="width:${(1-g.p_home)*100}%"></i><i class="h" style="width:${g.p_home*100}%"></i></div>
-    <div class="barlbl"><b>${g.away_team} ${pct(1-g.p_home)}</b><span style="color:var(--muted)">mercado ${g.home_team} ${pct(g.p_mercado_local)}</span><b>${pct(g.p_home)} ${g.home_team}</b></div></div>
+    <div class="barlbl"><b>${g.away_team} ${100-Math.round(g.p_home*100)}%</b><span style="color:var(--muted)">mercado ${g.home_team} ${pct(g.p_mercado_local)}</span><b>${Math.round(g.p_home*100)}% ${g.home_team}</b></div></div>
   <div class="lines">
     <div><div class="k">Spread ${g.home_team}</div><div class="m">Modelo ${sgn(-g.pred_margin)} · Línea ${sgn(homeLine(g.spread_line))} ${g.spread_open!=null?`<span class="mv">(abrió ${sgn(homeLine(g.spread_open))})</span>`:''}</div></div>
     <div><div class="k">Total (O/U)</div><div class="m">Modelo ${f1(g.pred_total)} · Línea ${f1(g.total_line)} ${g.total_open!=null?`<span class="mv">(abrió ${f1(g.total_open)})</span>`:''}</div></div>
@@ -526,7 +527,8 @@ if(S.games){
       <div class="rrow">${chip(g.away)}
         <div style="display:flex;justify-content:center;align-items:center;gap:12px"><span class="sc ${aw?'':'l'}">${g.as}</span><span class="mid">${g.ot?'Final (TE)':'Final'}<br>${esc(g.day?g.day.slice(0,3):'')} ${esc(g.date.slice(5))}</span><span class="sc ${hw?'':'l'}">${g.hs}</span></div>
         ${chip(g.home)}</div>
-      <div class="rsub">${ats}${ou}${g.neutral?`<span class="tag">Sede neutral: ${esc(g.stadium)}</span>`:''}</div>
+      ${g.model?`<div class="inj" style="padding:2px 14px 0">Modelo: ${g.model.p_home>=.5?g.home:g.away} ${Math.round(Math.max(g.model.p_home,1-g.model.p_home)*100)}% · proyectó ${g.away} ${Math.round(g.model.pa)}-${Math.round(g.model.ph)} ${g.home}</div>`:''}
+      <div class="rsub">${g.model?`<span class="tag ${g.model.hit?'good':'bad'}">${g.model.hit?'Modelo acertó':'Modelo falló'}</span>`:''}${ats}${ou}${g.neutral?`<span class="tag">Sede neutral: ${esc(g.stadium)}</span>`:''}</div>
       <details class="more"><summary>Estadísticas del partido</summary><div class="dbody box">
         <div class="tbl"><table><thead><tr><th>Equipo</th><th>${g.away}</th><th>${g.home}</th></tr></thead><tbody>${st.map(([l,k])=>`<tr><td>${l}</td><td>${v(a[k])}</td><td>${v(h[k])}</td></tr>`).join('')}</tbody></table></div>
         <h4>Pase</h4>${tb(['Jugador','C/I','Yds','TD','INT','Sacks'],(P.pass||[]).map(r=>`<tr>${nm(r[0],r[1])}<td>${r[2]}</td><td>${v(r[3])}</td><td>${v(r[4])}</td><td>${v(r[5])}</td><td>${v(r[6])}</td></tr>`))}
@@ -534,6 +536,14 @@ if(S.games){
         <h4>Recepción</h4>${tb(['Jugador','Rec.','Targets','Yds','TD'],(P.rec||[]).map(r=>`<tr>${nm(r[0],r[1],r[2])}<td>${v(r[3])}</td><td>${v(r[4])}</td><td>${v(r[5])}</td><td>${v(r[6])}</td></tr>`))}
         ${(P.def||[]).length?'<h4>Defensa (sacks e intercepciones)</h4>'+tb(['Jugador','Tackles','Sacks','INT'],P.def.map(r=>`<tr>${nm(r[0],r[1],r[2])}<td>${v(r[3])}</td><td>${v(r[4])}</td><td>${v(r[5])}</td></tr>`)):''}
       </div></details></article>`;
+  }
+  const REC=S.record||[];
+  if(REC.length){
+    const tot=REC.reduce((a,r)=>({g:a.g+r.games,w:a.w+r.winners,av:a.av+r.ats_value,an:a.an+r.ats_value_n,o:a.o+r.ou,on:a.on+r.ou_n,fm:a.fm+r.fav_market}),{g:0,w:0,av:0,an:0,o:0,on:0,fm:0});
+    $('#record').innerHTML=`<div class="panel" style="margin-bottom:14px"><h3 style="font-family:var(--f-display);font-size:20px;margin:0 0 4px;text-transform:uppercase">Récord del modelo</h3>
+      <p style="margin:0 0 10px;color:var(--muted);font-size:13.5px">Predicciones publicadas antes de cada semana comparadas con el resultado real.</p>
+      <div class="kpis" style="margin:0 0 10px">${[[`${tot.w}/${tot.g}`,'Ganadores acertados'],[`${tot.fm}/${tot.g}`,'Favorito de Vegas acertó'],[`${tot.av}/${tot.an}`,'Spread con diferencia ≥ 1.5 pts'],[`${tot.o}/${tot.on}`,'Over/Under']].map(([v,l])=>`<div class="kpi"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('')}</div>
+      <div class="tbl"><table><thead><tr><th>Semana</th><th>Ganadores</th><th>Vegas</th><th>Spread ≥1.5</th><th>O/U</th><th>Error margen</th><th>Error Vegas</th></tr></thead><tbody>${REC.map(r=>`<tr><td>S${r.week}</td><td>${r.winners}/${r.games}</td><td>${r.fav_market}/${r.games}</td><td>${r.ats_value}/${r.ats_value_n}</td><td>${r.ou}/${r.ou_n}</td><td>${r.mae_margin} pts</td><td>${r.mae_margin_mkt} pts</td></tr>`).join('')}</tbody></table></div></div>`;
   }
   const renderRes=()=>{$('#results').innerHTML=S.games.filter(g=>g.week===rw).map(rcard).join('');};
   $$('#rweeks .chipbtn').forEach(b=>b.addEventListener('click',()=>{rw=+b.dataset.w;$$('#rweeks .chipbtn').forEach(x=>x.setAttribute('aria-pressed',x===b));renderRes();}));
@@ -567,6 +577,8 @@ if(S.games){
   }
   $$('#cweeks .chipbtn').forEach(b=>b.addEventListener('click',()=>{cwk=+b.dataset.w;$$('#cweeks .chipbtn').forEach(x=>x.setAttribute('aria-pressed',x===b));renderCal();}));
   renderCal();
+  const lastRec=(S.record||[]).slice(-1)[0];
+  if(lastRec) $('#kpis').insertAdjacentHTML('afterbegin',`<div class="kpi"><div class="v">${lastRec.winners}/${lastRec.games}</div><div class="l">Aciertos semana ${lastRec.week}</div></div>`);
 }
 
 // ---------- Guía ----------
